@@ -289,6 +289,41 @@ install_backup_cron() {
     log "Backup cron installed ($cron_dest)"
 }
 
+# ─── 7. Install extra packages ──────────────────────────────────────────────
+
+install_packages() {
+    echo ""
+    echo "=== Installing extra packages ==="
+
+    local packages=(tmux)
+
+    for pkg in "${packages[@]}"; do
+        if dpkg -l "$pkg" &>/dev/null; then
+            log "$pkg already installed"
+        else
+            apt-get install -y "$pkg"
+            log "$pkg installed"
+        fi
+    done
+}
+
+# ─── 8. Shell configuration ─────────────────────────────────────────────────
+
+configure_shell() {
+    echo ""
+    echo "=== Configuring shell ==="
+
+    local bashrc="/home/aarzner/.bashrc"
+    local fix='[[ "$TERM" == "xterm-kitty" ]] && export TERM=xterm-256color'
+
+    if grep -qF 'xterm-kitty' "$bashrc"; then
+        log "Kitty terminal fix already in .bashrc"
+    else
+        sed -i "/# If not running interactively/i # Fix kitty terminal type for tmux compatibility\n${fix}\n" "$bashrc"
+        log "Added kitty terminal fix to .bashrc"
+    fi
+}
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 main() {
@@ -310,6 +345,8 @@ main() {
     check_ssh
     setup_unattended_upgrades
     install_backup_cron
+    install_packages
+    configure_shell
 
     echo ""
     echo "============================================"
@@ -318,8 +355,7 @@ main() {
     echo ""
     echo "Next steps:"
     echo "  1. Set up SSH keys (see instructions above if needed)"
-    echo "  2. Reserve a static IP on your router for $(hostname -I | awk '{print $1}')"
-    echo "  3. Reboot to apply boot config changes: sudo reboot"
+    echo "  2. Reboot to apply boot config changes: sudo reboot"
     echo ""
 }
 
