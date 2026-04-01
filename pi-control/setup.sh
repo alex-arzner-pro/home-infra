@@ -295,7 +295,7 @@ install_packages() {
     echo ""
     echo "=== Installing extra packages ==="
 
-    local packages=(tmux)
+    local packages=(tmux nodejs npm python3-venv)
 
     for pkg in "${packages[@]}"; do
         if dpkg -l "$pkg" &>/dev/null; then
@@ -324,6 +324,37 @@ configure_shell() {
     fi
 }
 
+# ─── 9. Telegram bot ─────────────────────────────────────────────────────────
+
+setup_telegram_bot() {
+    echo ""
+    echo "=== Setting up Telegram bot ==="
+
+    local bot_dir="${SCRIPT_DIR}/telegram"
+    local venv_dir="${bot_dir}/.venv"
+    local service_name="claude-telegram-bot"
+
+    if [[ ! -f "$HOME/.secrets/telegram.env" ]]; then
+        warn "Telegram bot token not found in ~/.secrets/telegram.env — skipping"
+        return
+    fi
+
+    # Create venv and install deps
+    if [[ ! -d "$venv_dir" ]]; then
+        sudo -u aarzner python3 -m venv "$venv_dir"
+        log "Python venv created"
+    fi
+
+    sudo -u aarzner "$venv_dir/bin/pip" install -q -r "${bot_dir}/requirements.txt"
+    log "Python dependencies installed"
+
+    # Install systemd service
+    cp "${bot_dir}/${service_name}.service" /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable --now "$service_name"
+    log "Telegram bot service enabled and started"
+}
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 main() {
@@ -347,6 +378,7 @@ main() {
     install_backup_cron
     install_packages
     configure_shell
+    setup_telegram_bot
 
     echo ""
     echo "============================================"

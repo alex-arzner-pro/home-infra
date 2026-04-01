@@ -9,3 +9,4 @@
 # Backup artifacts
 *.bak
 *.orig
+.venv
