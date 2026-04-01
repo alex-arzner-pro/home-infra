@@ -50,12 +50,6 @@ log "Binary backup saved ($(wc -c < "${BACKUP_DIR}/${DATE}/mikrotik.backup") byt
 # Clean up on router
 $SSH_CMD "/file remove pi-control-backup.backup" 2>/dev/null || true
 
-# ─── Also keep latest export in git repo for tracking changes ─────────────────
-
-REPO_DIR="/home/aarzner/home-infra/pi-control/mikrotik"
-cp "${BACKUP_DIR}/${DATE}/mikrotik-export.rsc" "${REPO_DIR}/latest-export.rsc"
-log "Latest export copied to repo for diff tracking"
-
 # ─── Rotate old backups ──────────────────────────────────────────────────────
 
 mapfile -t old_backups < <(find "$BACKUP_DIR" -maxdepth 1 -type d -name "20*" | sort -r | tail -n +$((RETENTION + 1)))

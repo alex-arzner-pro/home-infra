@@ -2,6 +2,10 @@
 .secrets/
 *.env
 
+# MikroTik exports (may contain API tokens/secrets)
+*.rsc
+*.backup
+
 # Backup artifacts
 *.bak
 *.orig
