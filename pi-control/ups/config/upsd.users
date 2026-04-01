@@ -1,0 +1,8 @@
+[admin]
+  password = %%NUT_ADMIN_PASS%%
+  actions = SET FSD
+  instcmds = ALL
+
+[upsmon]
+  password = %%NUT_UPSMON_PASS%%
+  upsmon primary

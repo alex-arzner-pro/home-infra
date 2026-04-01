@@ -1,0 +1,2 @@
+# Eaton Ellipse ECO — grant nut group access
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0463", ATTRS{idProduct}=="ffff", GROUP="nut", MODE="0664"
