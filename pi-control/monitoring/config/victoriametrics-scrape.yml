@@ -1,0 +1,7 @@
+scrape_configs:
+  - job_name: 'node-picontrol'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          instance: 'pi-control'
