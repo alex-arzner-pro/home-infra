@@ -1,0 +1,2 @@
+# Daily backup at 3:00 AM
+0 3 * * * root /opt/home-infra/pi-control/backup/backup.sh >> /var/log/backup.log 2>&1

@@ -1,0 +1,2 @@
+# SD card backup partition — mount by LABEL
+LABEL=backup  /mnt/backup  ext4  defaults,noatime,nofail  0  2

@@ -1,0 +1,32 @@
+# Headless server optimizations for /boot/firmware/config.txt
+# Apply these on top of the default config
+
+# Minimal GPU memory (no display)
+gpu_mem=16
+
+# Disable unused hardware
+dtparam=audio=off
+dtparam=i2c_arm=off
+dtparam=spi=off
+camera_auto_detect=0
+display_auto_detect=0
+
+# Disable HDMI (saves ~25mA)
+dtoverlay=vc4-kms-v3d
+max_framebuffers=0
+
+# 64-bit mode
+arm_64bit=1
+
+# Performance
+arm_boost=1
+disable_overscan=1
+
+# Don't create initial video= setting
+disable_fw_kms_setup=1
+
+[cm4]
+otg_mode=1
+
+[cm5]
+dtoverlay=dwc2,dr_mode=host

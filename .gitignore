@@ -1,0 +1,7 @@
+# Secrets — never commit
+.secrets/
+*.env
+
+# Backup artifacts
+*.bak
+*.orig
