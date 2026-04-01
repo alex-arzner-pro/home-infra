@@ -1,2 +1,5 @@
 # Daily backup at 3:00 AM
-0 3 * * * root /opt/home-infra/pi-control/backup/backup.sh >> /var/log/backup.log 2>&1
+0 3 * * * root /home/aarzner/home-infra/pi-control/backup/backup.sh >> /var/log/backup.log 2>&1
+
+# MikroTik config backup at 3:15 AM
+15 3 * * * aarzner /home/aarzner/home-infra/pi-control/mikrotik/backup-mikrotik.sh >> /var/log/mikrotik-backup.log 2>&1
