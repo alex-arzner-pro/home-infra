@@ -1,0 +1,26 @@
+groups:
+  - name: ups
+    rules:
+      - alert: UPSOnBattery
+        expr: network_ups_tools_ups_status{flag="OB"} == 1
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "UPS is on battery power!"
+
+      - alert: UPSLowBattery
+        expr: network_ups_tools_battery_charge < 60
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "UPS battery low: {{ $value }}%"
+
+      - alert: UPSHighLoad
+        expr: network_ups_tools_ups_load > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "UPS load > 80% ({{ $value }}%)"

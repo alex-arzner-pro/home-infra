@@ -1,0 +1,17 @@
+[Unit]
+Description=VictoriaMetrics vmalert
+After=network.target victoriametrics.service alertmanager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/vmalert \
+    -rule=/etc/victoriametrics/rules/*.yml \
+    -datasource.url=http://localhost:8428 \
+    -notifier.url=http://localhost:9093 \
+    -remoteWrite.url=http://localhost:8428 \
+    -httpListenAddr=:8880
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

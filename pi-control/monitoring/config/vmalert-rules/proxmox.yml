@@ -1,0 +1,26 @@
+groups:
+  - name: proxmox
+    rules:
+      - alert: ProxmoxNodeDown
+        expr: pve_up{id=~"node/.*"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Proxmox node {{ $labels.id }} is down"
+
+      - alert: ProxmoxStorageHigh
+        expr: (pve_disk_usage_bytes / pve_disk_size_bytes) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Proxmox storage {{ $labels.id }} > 85% ({{ $value | printf \"%.1f\" }}%)"
+
+      - alert: PVEExporterDown
+        expr: up{job="pve"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PVE exporter is down"
