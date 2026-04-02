@@ -24,7 +24,7 @@ for line in ENV_FILE.read_text().splitlines():
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 ALLOWED_USER_IDS = {609676348}  # Only allow Alex
 WORK_DIR = Path.home() / "home-infra"
-CLAUDE_TIMEOUT = 600  # 10 minutes — complex tasks need time
+CLAUDE_TIMEOUT = 1800  # 30 minutes — complex multi-step tasks need time
 IMAGES_DIR = Path.home() / ".claude" / "telegram-images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -67,7 +67,7 @@ async def run_claude(text: str, image_paths: list[str] | None = None) -> str:
         )
         return result.stdout.strip() or result.stderr.strip() or "(empty response)"
     except (subprocess.TimeoutExpired, asyncio.TimeoutError):
-        return "(timeout — claude took too long, 10 min limit)"
+        return "(timeout — claude took too long, 30 min limit)"
     except FileNotFoundError:
         return "(claude not found in PATH)"
     except Exception as e:
