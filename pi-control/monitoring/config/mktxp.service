@@ -1,0 +1,12 @@
+[Unit]
+Description=MKTXP MikroTik Exporter for Prometheus
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/mktxp/.venv/bin/mktxp --cfg-dir /etc/mktxp export
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

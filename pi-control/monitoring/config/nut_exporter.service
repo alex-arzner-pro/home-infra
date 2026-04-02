@@ -1,0 +1,12 @@
+[Unit]
+Description=NUT Exporter for Prometheus
+After=network.target nut-server.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nut_exporter --nut.server=localhost --web.listen-address=:9199
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

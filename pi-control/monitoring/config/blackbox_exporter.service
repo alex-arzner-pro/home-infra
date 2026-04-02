@@ -1,0 +1,14 @@
+[Unit]
+Description=Prometheus Blackbox Exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/blackbox_exporter --config.file=/etc/blackbox/blackbox.yml --web.listen-address=:9115
+Restart=on-failure
+RestartSec=5
+# ICMP probes need raw sockets
+AmbientCapabilities=CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+default:
+  user: monitoring@pve
+  token_name: monitoring
+  token_value: %%PVE_TOKEN_SECRET%%
+  verify_ssl: false

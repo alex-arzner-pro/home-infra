@@ -5,3 +5,79 @@ scrape_configs:
       - targets: ['localhost:9100']
         labels:
           instance: 'pi-control'
+
+  - job_name: 'node-proxmox'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - '192.168.86.10:9100'
+          - '192.168.86.11:9100'
+          - '192.168.86.12:9100'
+          - '192.168.86.13:9100'
+          - '192.168.86.9:9100'
+
+  - job_name: 'pve'
+    scrape_interval: 60s
+    metrics_path: /pve
+    params:
+      cluster: ['1']
+      node: ['1']
+    static_configs:
+      - targets: ['192.168.86.10']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9221
+
+  - job_name: 'nut'
+    scrape_interval: 30s
+    metrics_path: /ups_metrics
+    params:
+      ups: ['eaton']
+    static_configs:
+      - targets: ['localhost:9199']
+        labels:
+          instance: 'eaton-ups'
+
+  - job_name: 'mikrotik'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:49090']
+        labels:
+          instance: 'home-router'
+
+  - job_name: 'blackbox-icmp'
+    scrape_interval: 15s
+    metrics_path: /probe
+    params:
+      module: ['icmp']
+    static_configs:
+      - targets:
+          - '8.8.8.8'
+          - '1.1.1.1'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
+
+  - job_name: 'blackbox-http'
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: ['http_2xx']
+    static_configs:
+      - targets:
+          - 'http://192.168.86.20'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115
