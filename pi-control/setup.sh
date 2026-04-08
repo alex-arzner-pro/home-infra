@@ -295,7 +295,7 @@ install_packages() {
     echo ""
     echo "=== Installing extra packages ==="
 
-    local packages=(tmux nodejs npm python3-venv)
+    local packages=(tmux nodejs npm python3-venv bubblewrap)
 
     for pkg in "${packages[@]}"; do
         if dpkg -l "$pkg" &>/dev/null; then
@@ -305,6 +305,14 @@ install_packages() {
             log "$pkg installed"
         fi
     done
+
+    # Install Codex CLI via npm
+    if command -v codex &>/dev/null; then
+        log "@openai/codex already installed ($(codex --version 2>&1))"
+    else
+        npm i -g @openai/codex
+        log "@openai/codex installed"
+    fi
 }
 
 # ─── 8. Shell configuration ─────────────────────────────────────────────────
@@ -321,6 +329,17 @@ configure_shell() {
     else
         sed -i "/# If not running interactively/i # Fix kitty terminal type for tmux compatibility\n${fix}\n" "$bashrc"
         log "Added kitty terminal fix to .bashrc"
+    fi
+
+    # OpenAI API key for Codex CLI
+    local openai_line='[[ -f ~/.secrets/openai.env ]] && source ~/.secrets/openai.env'
+    if grep -qF 'openai.env' "$bashrc"; then
+        log "OpenAI env loader already in .bashrc"
+    else
+        echo "" >> "$bashrc"
+        echo "# Load OpenAI API key for Codex CLI" >> "$bashrc"
+        echo "$openai_line" >> "$bashrc"
+        log "Added OpenAI env loader to .bashrc"
     fi
 }
 
