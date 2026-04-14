@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Pi Flag Cam — Open live camera stream in browser
+# Usage: stream
+
+PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
+PI_CAM_PORT="${PI_FLAG_CAM_CAM_PORT:-8081}"
+URL="http://${PI_HOST}:${PI_CAM_PORT}/?action=stream"
+
+echo "Opening stream: $URL"
+xdg-open "$URL" 2>/dev/null || echo "Open in browser: $URL"

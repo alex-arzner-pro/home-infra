@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Pi Flag Cam — Luxafor Flag control CLI
+# Usage: lux <color>    (red, green, blue, yellow, cyan, magenta, white, orange, off)
+#        lux <r> <g> <b>  (RGB values 0-255)
+
+PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
+PI_PORT="${PI_FLAG_CAM_PORT:-8080}"
+BASE="http://${PI_HOST}:${PI_PORT}"
+
+if [ $# -eq 0 ]; then
+    echo "Usage: lux <color>        (red, green, blue, yellow, cyan, magenta, white, orange, off)"
+    echo "       lux <r> <g> <b>    (RGB values 0-255)"
+    exit 1
+fi
+
+if [ $# -eq 3 ]; then
+    curl -sf "${BASE}/lux/rgb/$1/$2/$3" && echo || echo "Error: Pi not reachable at ${PI_HOST}:${PI_PORT}"
+else
+    curl -sf "${BASE}/lux/color/$1" && echo || echo "Error: Pi not reachable at ${PI_HOST}:${PI_PORT}"
+fi

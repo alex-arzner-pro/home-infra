@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pi Flag Cam — Camera snapshot CLI
+# Usage: snapshot [filename]
+#   filename: output path (default: snapshot_YYYYMMDD_HHMMSS.jpg)
+
+PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
+PI_CAM_PORT="${PI_FLAG_CAM_CAM_PORT:-8081}"
+
+OUT="${1:-snapshot_$(date +%Y%m%d_%H%M%S).jpg}"
+
+curl -sf "http://${PI_HOST}:${PI_CAM_PORT}/?action=snapshot" -o "$OUT" && echo "Saved: $OUT ($(du -h "$OUT" | cut -f1))" || echo "Error: ustreamer not reachable at ${PI_HOST}:${PI_CAM_PORT}"

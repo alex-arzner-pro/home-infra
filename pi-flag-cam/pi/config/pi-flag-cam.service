@@ -1,0 +1,22 @@
+[Unit]
+Description=Pi Flag Cam API Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=aarzner
+ExecStart=/usr/bin/python3 /home/aarzner/pi-flag-cam/server.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+# Hardening
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/tmp
+
+[Install]
+WantedBy=multi-user.target

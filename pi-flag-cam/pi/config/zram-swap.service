@@ -1,0 +1,18 @@
+[Unit]
+Description=Setup zram swap (overlay-compatible)
+After=local-fs.target
+ConditionPathExists=/proc/cmdline
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '\
+    modprobe zram && \
+    echo lz4 > /sys/block/zram0/comp_algorithm && \
+    echo $(($(awk "/MemTotal/{print \$2}" /proc/meminfo) * 1024)) > /sys/block/zram0/disksize && \
+    mkswap /dev/zram0 && \
+    swapon /dev/zram0'
+ExecStop=/bin/sh -c 'swapoff /dev/zram0 2>/dev/null; echo 1 > /sys/block/zram0/reset 2>/dev/null'
+
+[Install]
+WantedBy=multi-user.target
