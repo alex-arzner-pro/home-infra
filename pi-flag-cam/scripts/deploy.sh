@@ -91,6 +91,8 @@ install_cron() {
 ENABLE="pi-flag-cam.service ustreamer.socket zram-swap.service crash-monitor.service"
 
 if [ "$OVERLAY" = true ]; then
+    # Migrate off the old always-on ustreamer.service (now socket-activated).
+    systemctl --root="${LOWER}" disable ustreamer.service 2>/dev/null || true
     systemctl --root="${LOWER}" enable $ENABLE
     mkdir -p "${LOWER}/var/spool/cron/crontabs"
     install_cron "${LOWER}/var/spool/cron/crontabs/${PI_USER}"
@@ -98,6 +100,8 @@ if [ "$OVERLAY" = true ]; then
     echo "Configs, units, cron installed to lower fs."
 else
     systemctl daemon-reload
+    # Migrate off the old always-on ustreamer.service (now socket-activated).
+    systemctl disable --now ustreamer.service 2>/dev/null || true
     systemctl enable $ENABLE
     install_cron "/var/spool/cron/crontabs/${PI_USER}"
     chown 0:crontab "/var/spool/cron/crontabs/${PI_USER}" 2>/dev/null || true

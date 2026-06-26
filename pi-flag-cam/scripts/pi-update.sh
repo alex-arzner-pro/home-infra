@@ -29,18 +29,36 @@ if ! ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" 'findmnt -no OPTIONS / | grep 
     exit 1
 fi
 
-# Step 3: Hold the kernel/bootloader, then upgrade.
+# Step 3: Soften the watchdog, hold kernels, then upgrade gently.
+# On the single-core Zero W, apt's CPU/IO + WiFi RX burst can (a) make systemd
+# miss a watchdog pet -> false hard-reset, and (b) trip udp_fail_queue_rcv_skb
+# memory-pressure oopses. Mitigations: watchdog off during apt, a download
+# rate-limit, and low CPU/IO priority (coherent_pool=8M + rmem from optimize-pi
+# help too). The kernel is held so a new kernel can't desync the overlay
+# initramfs (also avoids pulling a cross-arch ARMv7 kernel onto this ARMv6 Pi).
 echo
-echo "--- Running apt upgrade (kernel held) ---"
+echo "--- Disabling watchdog for the upgrade window ---"
+ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" '
+    sudo sed -i "s/^#\?RuntimeWatchdogSec=.*/RuntimeWatchdogSec=0/" /etc/systemd/system.conf
+    sudo systemctl daemon-reexec
+'
+echo "--- Running apt upgrade (kernel held, rate-limited, low priority) ---"
 ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" '
     set -e
-    # Pin kernel + bootloader so the overlay initramfs never silently desyncs.
-    # Package names vary across RPi OS releases; hold all plausible ones.
     sudo apt-mark hold raspberrypi-kernel raspberrypi-bootloader linux-image-rpi-v6 linux-image-rpi-v7 2>/dev/null || true
     sudo apt-get update -qq
-    sudo DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
+    # Upgrade glibc + dpkg FIRST, in their own tiny batch: replacing libc under a
+    # running dpkg is the segfault-prone step. If dpkg segfaults here, reboot the
+    # Pi (fresh libc) and re-run this script — dpkg --configure -a then succeeds.
+    sudo nice -n19 ionice -c3 sh -c "DEBIAN_FRONTEND=noninteractive apt-get -y -o Acquire::http::Dl-Limit=450 -o Dpkg::Use-Pty=0 install --only-upgrade libc6 dpkg" || true
+    # Then the rest of the upgrade.
+    sudo nice -n19 ionice -c3 sh -c "DEBIAN_FRONTEND=noninteractive apt-get -y -o Acquire::http::Dl-Limit=450 -o Dpkg::Use-Pty=0 upgrade"
     sudo apt-get -y autoremove
     echo "Update complete"
+'
+echo "--- Restoring watchdog (30s) ---"
+ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" '
+    sudo sed -i "s/^#\?RuntimeWatchdogSec=.*/RuntimeWatchdogSec=30s/" /etc/systemd/system.conf
 '
 
 # Step 4: Switch back to ro mode (pi-ro.sh verifies overlay re-engaged).

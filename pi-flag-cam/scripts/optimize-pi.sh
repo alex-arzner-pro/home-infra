@@ -131,6 +131,23 @@ CONFIG_EOF
 fi
 echo
 
+# --- Phase 1.2.5: Kernel cmdline (coherent_pool for WiFi/USB DMA stability) ---
+echo "--- Phase 1.2.5: Setting coherent_pool=8M in cmdline ---"
+# The firmware default coherent_pool=1M is too small for simultaneous WiFi
+# (brcmfmac) + USB DMA; under load it contributes to udp_fail_queue_rcv_skb
+# memory-pressure oopses. 8M gives headroom. Idempotent.
+ssh_pi '
+sudo mount -o remount,rw /boot/firmware
+if grep -q "coherent_pool=" /boot/firmware/cmdline.txt; then
+    sudo sed -i "s/coherent_pool=[0-9A-Za-z]*/coherent_pool=8M/" /boot/firmware/cmdline.txt
+else
+    sudo sed -i "s/\$/ coherent_pool=8M/" /boot/firmware/cmdline.txt
+fi
+sudo mount -o remount,ro /boot/firmware 2>/dev/null || true
+echo "coherent_pool=8M set in cmdline.txt"
+'
+echo
+
 # --- Phase 1.3: Blacklist kernel modules + WiFi stability ---
 echo "--- Phase 1.3: Deploying modprobe configs ---"
 scp -q "${PROJECT_DIR}/pi/config/modprobe-blacklist.conf" "${PI_USER}@${PI_HOST}:/tmp/pi-flag-cam-blacklist.conf"
@@ -151,14 +168,17 @@ echo "Deployed journald config"
 echo
 
 # --- Phase 1.5: Watchdog ---
-echo "--- Phase 1.5: Enabling watchdog ---"
-if ssh_pi 'grep -q "^RuntimeWatchdogSec=10s" /etc/systemd/system.conf 2>/dev/null'; then
+echo "--- Phase 1.5: Enabling watchdog (30s) ---"
+# 30s, not 10s: under heavy legitimate load (apt/dpkg on the single-core Zero W)
+# systemd PID1 can miss a 10s pet and trigger a FALSE hard-reset. 30s still
+# catches a real kernel hang quickly; pi-update.sh disables it during apt.
+if ssh_pi 'grep -q "^RuntimeWatchdogSec=30s" /etc/systemd/system.conf 2>/dev/null'; then
     echo "Watchdog already configured"
 else
-    ssh_pi 'sudo sed -i "s/^#\?RuntimeWatchdogSec=.*/RuntimeWatchdogSec=10s/" /etc/systemd/system.conf'
+    ssh_pi 'sudo sed -i "s/^#\?RuntimeWatchdogSec=.*/RuntimeWatchdogSec=30s/" /etc/systemd/system.conf'
     # Verify the change took effect
-    if ssh_pi 'grep -q "^RuntimeWatchdogSec=10s" /etc/systemd/system.conf'; then
-        echo "Enabled RuntimeWatchdogSec=10s"
+    if ssh_pi 'grep -q "^RuntimeWatchdogSec=30s" /etc/systemd/system.conf'; then
+        echo "Enabled RuntimeWatchdogSec=30s"
     else
         echo "WARNING: Failed to set watchdog — check /etc/systemd/system.conf manually"
     fi

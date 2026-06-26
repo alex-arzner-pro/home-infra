@@ -141,7 +141,7 @@ Mount SD card boot partition on another computer, edit `cmdline.txt`, remove `ov
 
 | Problem | Protection | Recovery time |
 |---------|-----------|---------------|
-| systemd hangs | Hardware watchdog (BCM2835) | 10 sec → auto-reboot |
+| systemd hangs | Hardware watchdog (BCM2835, 30s; off during apt) | ~30 sec → auto-reboot |
 | WiFi drops | wifi-watchdog: 2 consecutive fails → `nmcli reconnect`, then wlan0 bounce | up to ~4 min |
 | Service crash | `Restart=always` (API) / socket re-activation (camera) | ~3 sec → restart |
 | SD card wear | overlayfs (root read-only); crash log flushes to /boot only on errors | prevented |
@@ -208,7 +208,13 @@ Installed via `optimize-pi.sh`:
 
 **Pi keeps rebooting**: Check crash log: `ssh pi-flag-cam.local 'tail -20 /boot/firmware/crash-monitor.log'`. This log survives reboots (stored on boot partition). Also check `journalctl -b -p err`.
 
-**Pi crashes/reboot-loops during video streaming**: `udp_fail_queue_rcv_skb` is a memory-pressure oops under simultaneous WiFi + USB-isochronous (camera) load on the single shared USB bus. The real fix is the **on-demand camera** (no idle USB load), plus `roamoff=1`, durable power-save off, zram `mem_limit`, and `vm.min_free_kbytes`. If it still happens while actively streaming, keep 640x480 (don't raise to 720p) in `pi/config/ustreamer.service`.
+**Pi crashes/reboot-loops during video streaming**: `udp_fail_queue_rcv_skb` is a memory-pressure oops under simultaneous WiFi + USB-isochronous (camera) load on the single shared USB bus. The real fix is the **on-demand camera** (no idle USB load), plus `roamoff=1`, durable power-save off, zram `mem_limit`, `vm.min_free_kbytes`, `net.core.rmem_*`, and `coherent_pool=8M` (cmdline). If it still happens while actively streaming, keep 640x480 (don't raise to 720p) in `pi/config/ustreamer.service`.
+
+**Pi reboots during `apt` / heavy WiFi download**: same `udp_fail_queue_rcv_skb` RX-memory oops, plus the hardware watchdog falsely hard-resetting when the single core is too busy to pet it. Always update via `./scripts/pi-update.sh` (never a bare `apt upgrade`): it disables the watchdog during apt, rate-limits the download, runs apt at low CPU/IO priority, and holds the kernel. Don't let updates pile up — a 100+ package backlog stresses this Pi.
+
+**`dpkg` segfault during a big upgrade**: replacing `libc6` under a running `dpkg` segfaults it (in-memory glibc vs on-disk mismatch). Recovery: **reboot** the Pi (fresh libc), then `ssh <pi> 'sudo dpkg --configure -a'` — it completes cleanly. `pi-update.sh` upgrades `libc6`/`dpkg` in a small first batch to minimize this.
+
+**Wrong-arch kernel pulled in**: this is an **ARMv6** Pi (Zero W). An `apt` dep-resolve can drag in an ARMv7 (`-v7`) kernel + headers whose initramfs generation segfaults (`udev` hook). The `-v6` kernel is held; remove a stray cross-arch kernel with `sudo dpkg --remove --force-depends linux-image-<ver>-v7`.
 
 **Luxafor color slow to respond**: Fixed by using `ThreadingHTTPServer` instead of single-threaded `HTTPServer`. If a stale HTTP connection blocks, other requests still go through.
 
