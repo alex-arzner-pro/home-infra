@@ -1,27 +1,47 @@
 [Unit]
-Description=uStreamer MJPEG Video Streaming
+Description=Pi Flag Cam uStreamer MJPEG camera (on-demand)
+# Only ever run when the USB camera is actually plugged in.
+ConditionPathExists=/dev/video0
 After=network.target
-Wants=network.target
+# Released automatically when the on-demand proxy no longer needs it (idle).
+StopWhenUnneeded=yes
+# Don't crash-loop a flaky camera.
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
 User=aarzner
+SupplementaryGroups=video
+# Bind to localhost only; the public :8081 is fronted by ustreamer.socket
+# + ustreamer-proxy.service (systemd-socket-proxyd).
+# 640x480@10fps is the stable default for the Pi Zero W's single shared USB
+# bus. For 720p (higher USB load while streaming) change --resolution to
+# 1280x720. --drop-same-frames removed (counterproductive for webcams).
 ExecStart=/usr/bin/ustreamer \
     --device /dev/video0 \
-    --resolution 1280x720 \
+    --resolution 640x480 \
     --format MJPEG \
     --desired-fps 10 \
-    --drop-same-frames 30 \
     --slowdown \
-    --host 0.0.0.0 \
-    --port 8081
-Restart=always
+    --exit-on-no-clients 30 \
+    --host 127.0.0.1 \
+    --port 8082
+# On-demand: socket activation (re)starts it; restart only on genuine failure.
+Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 
 # Hardening
 NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
 PrivateTmp=true
+DevicePolicy=closed
+DeviceAllow=/dev/video0 rw
+# Only the local proxy talks to us on 127.0.0.1:8082.
+IPAddressAllow=localhost
+IPAddressDeny=any
 
-[Install]
-WantedBy=multi-user.target
+# NOTE: intentionally NO [Install]/WantedBy — this unit never autostarts at
+# boot. It is pulled in on demand by ustreamer-proxy.service.

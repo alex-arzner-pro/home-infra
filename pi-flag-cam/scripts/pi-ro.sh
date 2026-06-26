@@ -6,61 +6,69 @@
 
 set -euo pipefail
 
-PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
-PI_USER="${PI_FLAG_CAM_USER:-aarzner}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
+
+if ! ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" true 2>/dev/null; then
+    echo "ERROR: Pi unreachable at ${PI_USER}@${PI_HOST}" >&2
+    exit 1
+fi
 
 echo "=== Switching Pi to read-only mode ==="
 
-# Check if overlay is already active
-if ssh -o ConnectTimeout=10 "${PI_USER}@${PI_HOST}" 'grep -q "overlayroot=tmpfs" /proc/cmdline'; then
-    echo "Overlay is already active. Nothing to do."
-    exit 0
+if ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" 'grep -q "overlayroot=tmpfs" /proc/cmdline'; then
+    if ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" 'findmnt -no FSTYPE / | grep -q overlay'; then
+        echo "Already in read-only (overlay) mode. Nothing to do."
+        exit 0
+    fi
+    echo "cmdline has overlayroot but root is not overlay yet; rebooting to apply."
+else
+    echo "Enabling overlay (cmdline + fstab + mask remount-fs)..."
+    ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" '
+        set -e
+        sudo mount -o remount,rw /boot/firmware
+        if grep -q "overlayroot=tmpfs" /boot/firmware/cmdline.txt; then
+            echo "overlayroot=tmpfs already in cmdline.txt"
+        else
+            sudo sed -i "s/^/overlayroot=tmpfs /" /boot/firmware/cmdline.txt
+            echo "Added overlayroot=tmpfs to cmdline.txt"
+        fi
+        if grep -q "/boot/firmware.*defaults,ro" /etc/fstab; then
+            echo "Boot partition already ro in fstab"
+        else
+            sudo sed -i "s|\(.*/boot/firmware.*\)defaults\(.*\)|\1defaults,ro\2|" /etc/fstab
+            echo "Boot partition set to ro in fstab"
+        fi
+        # Mask systemd-remount-fs: it cannot remount an overlayfs root and its
+        # failure cascades. Overlay is currently OFF, so this symlink lands in
+        # the real (lower) fs — pi-rw.sh removes it from the SAME layer, keeping
+        # mask/unmask symmetric and reversible.
+        sudo systemctl mask systemd-remount-fs.service
+        echo "Masked systemd-remount-fs (incompatible with overlayfs)"
+        sudo mount -o remount,ro /boot/firmware 2>/dev/null || true
+    '
 fi
 
-# Add overlayroot=tmpfs to cmdline
-ssh "${PI_USER}@${PI_HOST}" '
-    # Ensure boot partition is writable
-    sudo mount -o remount,rw /boot/firmware
-
-    if grep -q "overlayroot=tmpfs" /boot/firmware/cmdline.txt; then
-        echo "overlayroot=tmpfs already in cmdline.txt"
-    else
-        sudo sed -i "s/^/overlayroot=tmpfs /" /boot/firmware/cmdline.txt
-        echo "Added overlayroot=tmpfs to cmdline.txt"
-    fi
-
-    # Also make boot partition read-only in fstab
-    if grep -q "/boot/firmware.*defaults,ro" /etc/fstab; then
-        echo "Boot partition already ro in fstab"
-    else
-        sudo sed -i "s|\(.*/boot/firmware.*\)defaults\(.*\)|\1defaults,ro\2|" /etc/fstab
-        echo "Boot partition set to ro in fstab"
-    fi
-
-    # Mask systemd-remount-fs — it cannot remount overlayfs root and
-    # causes cascading failures (no swap, repeated restart loops)
-    sudo systemctl mask systemd-remount-fs.service
-    echo "Masked systemd-remount-fs (incompatible with overlayfs)"
-
-    sudo mount -o remount,ro /boot/firmware 2>/dev/null || true
-'
-
 echo "Rebooting into read-only mode..."
-ssh "${PI_USER}@${PI_HOST}" 'sudo reboot' 2>/dev/null || true
+ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" 'sudo reboot' 2>/dev/null || true
+
 sleep 5
-for i in $(seq 1 24); do
-    ssh -o ConnectTimeout=5 "${PI_USER}@${PI_HOST}" 'echo "Pi is up in ro mode"' 2>/dev/null && break
-    echo "  waiting... ($i)"
+up=""
+for i in $(seq 1 30); do
+    if ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 "${PI_USER}@${PI_HOST}" true 2>/dev/null; then up=1; break; fi
+    echo "  waiting for reboot... ($i)"
     sleep 5
 done
+if [ -z "$up" ]; then
+    echo "ERROR: Pi did not come back after reboot" >&2
+    exit 1
+fi
 
-echo
 echo "Verifying overlay is active..."
-ssh "${PI_USER}@${PI_HOST}" '
-    if grep -q "overlayroot=tmpfs" /proc/cmdline; then
-        echo "SUCCESS: overlayfs is active"
-        mount | grep "on / " | head -1
-    else
-        echo "WARNING: overlayfs NOT active — check boot config"
-    fi
-'
+if ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" 'grep -q "overlayroot=tmpfs" /proc/cmdline && findmnt -no FSTYPE / | grep -q overlay'; then
+    echo "SUCCESS: overlayfs is active (root is overlay; writes go to tmpfs)."
+    ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" 'findmnt -no SOURCE,FSTYPE,OPTIONS /' || true
+else
+    echo "WARNING: overlayfs NOT active — check boot config." >&2
+    exit 1
+fi

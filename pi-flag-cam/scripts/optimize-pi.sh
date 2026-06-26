@@ -7,18 +7,30 @@
 
 set -euo pipefail
 
-PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
-PI_USER="${PI_FLAG_CAM_USER:-aarzner}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 ssh_pi() {
-    ssh -o ConnectTimeout=10 "${PI_USER}@${PI_HOST}" "$@"
+    ssh "${SSH_OPTS[@]}" "${PI_USER}@${PI_HOST}" "$@"
 }
 
 echo "=== Pi Flag Cam — System Optimization ==="
 echo "Target: ${PI_USER}@${PI_HOST}"
 echo
+
+if ! ssh_pi true 2>/dev/null; then
+    echo "ERROR: Pi unreachable at ${PI_USER}@${PI_HOST}" >&2
+    exit 1
+fi
+
+# This script writes to the REAL root. If overlayfs is active, changes land in
+# tmpfs and vanish on reboot — refuse and tell the operator to switch to rw.
+if ssh_pi 'grep -q "overlayroot=tmpfs" /proc/cmdline'; then
+    echo "ERROR: overlayfs is active — changes would be lost on reboot." >&2
+    echo "Run ./scripts/pi-rw.sh first, then re-run optimize-pi.sh." >&2
+    exit 1
+fi
 
 # --- Baseline ---
 echo "--- Collecting baseline metrics ---"
@@ -221,7 +233,8 @@ ssh_pi '
 sudo mv /tmp/zram-swap.service /etc/systemd/system/zram-swap.service
 sudo systemctl daemon-reload
 sudo systemctl enable zram-swap.service
-echo "zram-swap service installed"
+sudo systemctl start zram-swap.service 2>/dev/null || true
+echo "zram-swap service installed and started"
 '
 echo
 

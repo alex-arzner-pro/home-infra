@@ -17,6 +17,14 @@ ProtectSystem=strict
 NoNewPrivileges=true
 PrivateTmp=true
 ReadWritePaths=/tmp
+# HID access to the Luxafor without world-writable device nodes.
+SupplementaryGroups=plugdev
+# Firewall (systemd cgroup BPF — works even though iptables is blacklisted):
+# only the operator laptop (t14, pinned by DHCP reservation) + localhost may
+# reach :8080. Keep the IP in sync with PI_FLAG_CAM_ALLOW_IP in config.sh.
+IPAddressAllow=localhost
+IPAddressAllow=192.168.86.86
+IPAddressDeny=any
 
 [Install]
 WantedBy=multi-user.target

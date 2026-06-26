@@ -8,6 +8,12 @@ User=root
 ExecStart=/home/aarzner/pi-flag-cam/crash-monitor.sh
 Restart=always
 RestartSec=5
+# Hardening (root is required to remount /boot/firmware rw for the crash log).
+ProtectHome=read-only
+ReadWritePaths=/boot/firmware /run
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX
 
 [Install]
 WantedBy=multi-user.target
