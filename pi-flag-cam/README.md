@@ -89,6 +89,19 @@ The camera is **on-demand**. `ustreamer.socket` listens on `:8081`; the first re
 
 Default profile is **640x480@10fps** (the stable ceiling for the Pi Zero W's single shared USB bus). For 720p, change `--resolution` in `pi/config/ustreamer.service` (higher USB load while streaming).
 
+## Cat Detection (local, on the workstation)
+
+Detect a cat on the Pi camera and fire a desktop notification. Recognition runs **locally on the workstation** with YOLO11 Nano — the Pi Zero W is far too weak for ML and only serves snapshots.
+
+```bash
+./scripts/cat-detect-setup.sh   # one-time: uv resolves deps + downloads YOLO11n model
+./scripts/cat-detect            # poll loop; Ctrl-C to stop
+```
+
+The detector grabs a frame via **SSH + `fswebcam`** every **5s** (override via `CAT_DETECT_INTERVAL`, min 3s): fswebcam opens the camera, captures one JPEG to stdout, and closes it — so the camera/USB bus is free between polls. YOLO11n runs locally (COCO `cat` class, conf ≥ 0.5) and fires `notify-send` on detection with a 30s debounce. (Needs SSH key access to the Pi, which the repo already uses.)
+
+**Why fswebcam, not ustreamer-snapshot polling:** polling `ustreamer` faster than its 30s idle-stop keeps the camera open continuously → the `brcmfmac` `udp_fail_queue_rcv_skb` oops reboots the Zero W within minutes (observed). fswebcam releases the camera between frames, so the USB bus idles between polls and the Pi stays up. ustreamer remains for interactive live view / manual snapshots.
+
 ## Testing
 
 Run automated smoke tests (14 checks):
@@ -173,6 +186,8 @@ pi-flag-cam/
       journald-pi-flag-cam.conf    # volatile logging (RAM, not SD)
       modprobe-blacklist.conf      # blacklist: hid_led, bluetooth, audio, CSI, DRM, IPv6, fuse, iptables
       brcmfmac.conf                # WiFi driver stability (roamoff=1)
+  detector/                        # Local cat detector (runs on the workstation, NOT the Pi)
+    detect.py                      # YOLO11n poll loop + notify-send (uv / PEP 723 inline deps)
   scripts/
     config.sh                      # Shared config: host/IP, ports, SSH user (sourced by all scripts)
     optimize-pi.sh                 # One-time Pi optimization + package install
@@ -184,6 +199,8 @@ pi-flag-cam/
     lux                            # CLI: Luxafor LED control
     snapshot                       # CLI: camera snapshot
     stream                         # CLI: open live video in browser
+    cat-detect                     # CLI: start the local cat detector (uv run)
+    cat-detect-setup.sh            # One-time: uv env + YOLO11n model download
 ```
 
 ## Pi System Dependencies

@@ -13,3 +13,7 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Cat detector: local venv + downloaded model weights (workstation-only, large)
+pi-flag-cam/detector/.venv/
+*.pt
