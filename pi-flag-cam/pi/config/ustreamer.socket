@@ -1,0 +1,17 @@
+[Unit]
+Description=Pi Flag Cam camera socket (public :8081, on-demand activation)
+
+[Socket]
+# Public MJPEG port. server.py /cam/* keeps redirecting here unchanged.
+ListenStream=8081
+# Hand accepted connections to the idle-stopping proxy, not ustreamer directly.
+Service=ustreamer-proxy.service
+# Firewall (systemd cgroup BPF — works without iptables, which is blacklisted):
+# only the operator laptop (t14, pinned by DHCP reservation) + localhost may
+# reach the camera. Keep in sync with PI_FLAG_CAM_ALLOW_IP in scripts/config.sh.
+IPAddressAllow=localhost
+IPAddressAllow=192.168.86.86
+IPAddressDeny=any
+
+[Install]
+WantedBy=sockets.target

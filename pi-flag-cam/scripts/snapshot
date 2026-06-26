@@ -3,8 +3,8 @@
 # Usage: snapshot [filename]
 #   filename: output path (default: snapshot_YYYYMMDD_HHMMSS.jpg)
 
-PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
-PI_CAM_PORT="${PI_FLAG_CAM_CAM_PORT:-8081}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 
 OUT="${1:-snapshot_$(date +%Y%m%d_%H%M%S).jpg}"
 

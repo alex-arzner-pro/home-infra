@@ -2,8 +2,8 @@
 # Pi Flag Cam — Open live camera stream in browser
 # Usage: stream
 
-PI_HOST="${PI_FLAG_CAM_HOST:-pi-flag-cam.local}"
-PI_CAM_PORT="${PI_FLAG_CAM_CAM_PORT:-8081}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
 URL="http://${PI_HOST}:${PI_CAM_PORT}/?action=stream"
 
 echo "Opening stream: $URL"

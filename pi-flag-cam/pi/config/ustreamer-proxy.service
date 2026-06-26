@@ -1,0 +1,24 @@
+[Unit]
+Description=Pi Flag Cam camera on-demand proxy (idle-stops the camera)
+# Bring up the actual streamer and forward to it.
+Requires=ustreamer.service
+After=ustreamer.service
+# Lifetime is bound to the socket.
+Requires=ustreamer.socket
+After=ustreamer.socket
+
+[Service]
+# systemd-socket-proxyd forwards the activation socket to ustreamer on
+# 127.0.0.1:8082 and exits after 30s with no traffic; that idle exit releases
+# ustreamer.service (StopWhenUnneeded=yes), freeing the camera + USB bus so the
+# device returns to being a quiet, rock-solid Luxafor Flag.
+# Path is the Debian/RPi OS location; deploy.sh verifies it exists.
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=30s 127.0.0.1:8082
+# Hardening + firewall (must allow the accepted client + localhost upstream).
+IPAddressAllow=localhost
+IPAddressAllow=192.168.86.86
+IPAddressDeny=any
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true

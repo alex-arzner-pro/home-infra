@@ -1,6 +1,7 @@
-# Luxafor Flag USB HID — allow non-root access
+# Luxafor Flag USB HID — grant access via the plugdev group (not world 0666).
 # Deployed to /etc/udev/rules.d/99-luxafor.rules
-# hidraw device (for hidraw backend)
-KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="f372", MODE="0666"
-# USB device (for libusb backend used by python3-hid)
-SUBSYSTEM=="usb", ATTR{idVendor}=="04d8", ATTR{idProduct}=="f372", MODE="0666"
+# python3-hid uses the hidraw backend by default, so the hidraw rule is the
+# operative one; the usb rule covers the libusb fallback. server.py runs with
+# SupplementaryGroups=plugdev (see pi-flag-cam.service).
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="f372", GROUP="plugdev", MODE="0660"
+SUBSYSTEM=="usb", ATTR{idVendor}=="04d8", ATTR{idProduct}=="f372", GROUP="plugdev", MODE="0660"
