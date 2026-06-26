@@ -22,6 +22,7 @@ Env (set by scripts/cat-detect):
 
 import io
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -53,10 +54,39 @@ def grab_frame():
     return proc.stdout
 
 
+NOTIFY_TITLE = "Pi Flag Cam"
+
+
 def notify(message):
+    """Show a centered "плашка" popup (same style/mechanism as the dotfiles
+    mk321/yubikey popups: a yad window floated dead-center by the sway rule
+    for app_id=yad, no focus steal, auto-closing on --timeout). Falls back to
+    notify-send -> dunst (top-right) when yad is unavailable.
+
+    yad is launched fire-and-forget (Popen, no wait): --timeout blocks yad for
+    its whole lifetime, so waiting here would stall the poll loop. It closes
+    itself; the 30s debounce keeps popups from stacking.
+    """
+    if shutil.which("yad"):
+        markup = (
+            "<span font='JetBrainsMono Nerd Font 11' foreground='#928374'>"
+            f"{NOTIFY_TITLE}</span>\n"
+            "<span font='JetBrainsMono Nerd Font 22' weight='bold' "
+            f"foreground='#fabd2f'>{message}</span>"
+        )
+        try:
+            subprocess.Popen(
+                ["yad", "--undecorated", "--no-buttons", "--skip-taskbar",
+                 "--center", "--borders=16", "--timeout=6", "--width=520",
+                 "--text-align=center", "--text", markup],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            return
+        except (FileNotFoundError, OSError) as e:
+            print(f"yad failed, falling back to notify-send: {e}", file=sys.stderr)
     try:
         subprocess.run(
-            ["notify-send", "-i", "camera-web", "Pi Flag Cam", message],
+            ["notify-send", "-i", "camera-web", NOTIFY_TITLE, message],
             timeout=5, check=False,
         )
     except (FileNotFoundError, subprocess.SubprocessError) as e:
