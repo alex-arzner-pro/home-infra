@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Pi Flag Cam — start the local cat detector (via uv).
+# Grabs frames with SSH + fswebcam (camera opens/closes per frame, so the USB
+# bus stays free between polls — keeps the Zero W stable). Runs on the
+# workstation. Ctrl-C to stop.
+# Usage: ./scripts/cat-detect
+#   Override poll interval (min 3s): CAT_DETECT_INTERVAL=8 ./scripts/cat-detect
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/config.sh"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+DETECTOR="${PROJECT_DIR}/detector"
+
+command -v uv >/dev/null || { echo "uv not found — install from https://docs.astral.sh/uv/" >&2; exit 1; }
+
+# Pi connection from the shared config; detector grabs frames via SSH+fswebcam.
+export CAT_DETECT_PI_HOST="${PI_HOST}"
+export CAT_DETECT_PI_USER="${PI_USER}"
+export CAT_DETECT_MODEL="${DETECTOR}/yolo11n.pt"
+export PYTHONUNBUFFERED=1  # stream log lines immediately
+
+# uv run resolves the PEP 723 inline deps in detect.py into a cached env.
+exec uv run --quiet "${DETECTOR}/detect.py" "$@"
